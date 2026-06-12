@@ -3,6 +3,7 @@
 CryptoBot SIMULATO - Threading Simple (no asyncio)
 CoinGecko API pubblica - BTC, ETH, BNB
 Trade simulati per testing
+PARAMETRI AGGIUSTATI: RSI < 50, MACD > -10
 """
 
 import json
@@ -191,7 +192,7 @@ def trading_loop():
                         if len(bot.prices[symbol]) > 30:
                             rsi = calc_rsi(bot.prices[symbol])
                             macd = calc_macd(bot.prices[symbol])
-                            if rsi < 40 and macd > 0:
+                            if rsi < 50 and macd > -10:
                                 names = {'bitcoin': 'BTC', 'ethereum': 'ETH', 'binancecoin': 'BNB'}
                                 msg = f"[{datetime.now().strftime('%H:%M:%S')}] SIM BUY {names[symbol]} @ ${price:.0f}"
                                 bot.trades.append(msg)
@@ -213,3 +214,4 @@ if __name__ == '__main__':
             time.sleep(1)
     except KeyboardInterrupt:
         print("Shutdown")
+        
