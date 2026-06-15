@@ -287,7 +287,7 @@ def trading_loop():
                         rsi = calc_rsi(bot.prices[symbol])
                         macd = calc_macd(bot.prices[symbol])
 
-                        if rsi < 40 and macd > 0:
+                        if rsi < 60 and macd > -50:
                             res = place_order(symbol, "BUY")
                             if res and "orderId" in res:
                                 msg = f"[{datetime.now().strftime('%H:%M:%S')}] BUY {symbol} @ ${price:.2f} (RSI:{rsi:.0f}) - OK"
