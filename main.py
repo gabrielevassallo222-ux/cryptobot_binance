@@ -45,6 +45,8 @@ class Bot:
         self.balances = {}
         # open positions: symbol -> {"entry_price": float, "qty": float}
         self.positions = {}
+        # ultimi valori RSI/MACD calcolati per ogni simbolo (per debug in dashboard)
+        self.last_indicators = {}
 
 bot = Bot()
 
@@ -165,6 +167,10 @@ button.paused { background: #ff6b6b; }
 <h3 style="color: #ffd700; margin-bottom: 10px;">Open Positions</h3>
 <div id="positions-list"><div class="trade" style="opacity: 0.5;">None</div></div>
 </div>
+<div class="positions">
+<h3 style="color: #ffd700; margin-bottom: 10px;">Indicatori Live (debug)</h3>
+<div id="indicators-list"><div class="trade" style="opacity: 0.5;">Calculating...</div></div>
+</div>
 <div class="trades">
 <h3 style="color: #ffd700; margin-bottom: 10px;">Recent Activity</h3>
 <div id="trades-list"><div class="trade" style="opacity: 0.5;">Waiting...</div></div>
@@ -207,6 +213,13 @@ async function update() {
         }
         document.getElementById('positions-list').innerHTML = posHtml || '<div class="trade" style="opacity: 0.5;">None</div>';
 
+        let indHtml = '';
+        for (const [symbol, ind] of Object.entries(s.indicators)) {
+            let ok = (ind.rsi < 40 && ind.macd > 0);
+            indHtml += '<div class="trade">' + symbol + ': price $' + ind.price.toFixed(2) + ' | RSI ' + ind.rsi + ' | MACD ' + ind.macd + (ok ? ' -> SEGNALE OK' : '') + '</div>';
+        }
+        document.getElementById('indicators-list').innerHTML = indHtml || '<div class="trade" style="opacity: 0.5;">Calculating...</div>';
+
         let trades = await fetch('/trades').then(r => r.json());
         let html = trades.slice().reverse().slice(0, 20).map(x => '<div class="trade">' + x + '</div>').join('');
         document.getElementById('trades-list').innerHTML = html || '<div class="trade" style="opacity: 0.5;">Waiting...</div>';
@@ -241,6 +254,7 @@ class Handler(BaseHTTPRequestHandler):
                 'orders': len(bot.trades),
                 'open_positions': len(bot.positions),
                 'positions': positions_out,
+                'indicators': bot.last_indicators,
                 'uptime': f"{elapsed.days}d {hours}h",
                 'paused': bot.paused,
                 'connected': bot.connected,
@@ -343,6 +357,10 @@ def trading_loop():
                 if len(bot.prices[symbol]) > 30:
                     rsi = calc_rsi(bot.prices[symbol])
                     macd = calc_macd(bot.prices[symbol])
+
+                    # LOG DIAGNOSTICO: stampa sempre i valori per capire perche' non scatta
+                    print(f"[DEBUG] {symbol} price={price:.2f} RSI={rsi:.2f} MACD={macd:.4f} (serve RSI<{RSI_THRESHOLD} e MACD>{MACD_THRESHOLD})")
+                    bot.last_indicators[symbol] = {"rsi": round(rsi, 2), "macd": round(macd, 4), "price": price}
 
                     if rsi < RSI_THRESHOLD and macd > MACD_THRESHOLD:
                         res = place_order(symbol, "BUY")
